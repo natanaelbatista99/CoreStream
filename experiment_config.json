@@ -28,5 +28,20 @@
         "runtime": true,
         "plot": true,
         "save_partitions": true
+    },
+    "kddcup.csv": {
+        "dataset": "kddcup",
+        "mpts": [20, 18, 16, 14, 12, 10, 8, 6, 4],
+        "min_cluster_size": 10,
+        "decaying_factor": 0.0025,
+        "mu": 2,
+        "n_samples_init": 20000,
+        "epsilon": 0.005,
+        "percent": 0.10,
+        "method_summarization": "single",
+        "stream_speed": 100,
+        "runtime": true,
+        "plot": false,
+        "save_partitions": true
     }
 }

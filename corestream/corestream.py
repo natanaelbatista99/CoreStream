@@ -30,7 +30,7 @@ class CoreStream(base.Clusterer, nn.Module):
         def __init__(self, x, timestamp, covered):
             self.x = x
             self.timestamp = (timestamp,)
-            self.covered = covered
+            self.covered   = covered
     
     def __init__(
         self,
@@ -669,10 +669,6 @@ class CoreStream(base.Clusterer, nn.Module):
                 else:
                     self._initial_single_linkage()
                 
-                print("-------------------")
-                print("entrando no build()")
-                self._build()
-                
                 self.initialized = True
                 
                 del self._init_buffer
@@ -708,7 +704,7 @@ class CoreStream(base.Clusterer, nn.Module):
             
             # SAVE MPTS PARTITION
             df_partition                  = pd.DataFrame([partition])
-            df_partition['particao_mpts'] = mpts
+            df_partition['partition_mpts'] = mpts
             df_partition.columns          = df_partition.columns.map(str)
             df_partition.to_parquet(os.path.join(sub_dir, f"partitions_mpts_{mpts}.parquet"), index=True)
 
@@ -814,14 +810,14 @@ class CoreStream(base.Clusterer, nn.Module):
             if not os.path.exists(sub_dir):
                 os.makedirs(sub_dir)
 
-            df_partition_bubbles_o                  = pd.DataFrame([partition_bubbles_o])
-            df_partition_bubbles_o['particao_mpts'] = mpts
-            df_partition_bubbles_o.columns          = df_partition_bubbles_o.columns.map(str)
+            df_partition_bubbles_o                   = pd.DataFrame([partition_bubbles_o])
+            df_partition_bubbles_o['partition_mpts'] = mpts
+            df_partition_bubbles_o.columns           = df_partition_bubbles_o.columns.map(str)
             df_partition_bubbles_o.to_parquet(os.path.join(sub_dir, f"partition_bubbles_mpts_{mpts}.parquet"), index=True)
 
-            df_partitons_hdbscan_o                  = pd.DataFrame([partition_bubbles_o])
-            df_partitons_hdbscan_o['particao_mpts'] = mpts
-            df_partitons_hdbscan_o.columns          = df_partitons_hdbscan_o.columns.map(str)
+            df_partitons_hdbscan_o                   = pd.DataFrame([partition_hdbscan_o])
+            df_partitons_hdbscan_o['partition_mpts'] = mpts
+            df_partitons_hdbscan_o.columns           = df_partitons_hdbscan_o.columns.map(str)
             df_partitons_hdbscan_o.to_parquet(os.path.join(sub_dir, f"partition_hdbscan_mpts_{mpts}.parquet"), index=True)
 
         except FileNotFoundError as e:

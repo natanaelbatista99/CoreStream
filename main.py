@@ -60,12 +60,6 @@ def set_stdout_stderr(result_dataset_path, dataset_name):
 
 def main():
 
-    #query = f"SELECT * FROM 'results/28k2d/flat_solutions/flat_solution_partitions_t70/partitions_bubbles/partitions_mpts_*.parquet'"
-    #query = f"SELECT * FROM 'results/28k2d/datasets/*.parquet'"
-    #df    = duckdb.query(query).to_df()
-    #print(df)
-    #sys.exit(1)
-
     # Checking dataset file and experiement_config.json file
     dataset_name, dataset = check_dataset()
     all_configs           = check_parameters(dataset_name)
@@ -76,10 +70,14 @@ def main():
     checkpoint_path     = os.path.join(result_dataset_path, "checkpoints")
     os.makedirs(checkpoint_path, exist_ok=True)
 
-    corestream, start_index, version = load_checkpoint(checkpoint_path)
-
     # Redirects stdout and stderr to files
     set_stdout_stderr(result_dataset_path, corestream_params['dataset'])
+
+    evaluation = Evaluation(corestream_params['dataset'], corestream_params['mpts'])
+    evaluation.evaluation_mensure()
+    sys.exit(1)
+
+    corestream, start_index, version = load_checkpoint(checkpoint_path)
     
     # CORESTREAM OBJECT
     if corestream is None:
@@ -99,19 +97,24 @@ def main():
         
         count_points += 1
         
-        if count_points > corestream.n_samples_init and count_points % corestream.n_samples_init == 0:
+        if count_points % corestream.n_samples_init == 0:
             corestream.predict_one()
-            version += 1
-            save_checkpoint(corestream, count_points, version, checkpoint_path)
-        elif count_points == corestream_params['n_samples_init']:
-            save_checkpoint(corestream, corestream_params['n_samples_init'], version, checkpoint_path)
+
+            if (count_points / corestream.n_samples_init) % 2 == 1:
+                save_checkpoint(corestream, count_points, version, checkpoint_path)
+                version += 1
+                
 
         #if count_points == corestream.n_samples_init:
         #    break
 
     corestream.save_runtime_final()
 
-    print("Time Total: ", time.time() - start)    
+    print("Time Total: ", time.time() - start)
+
+    # ASSESSMENT
+    evaluation = Evaluation(corestream_params['dataset'], corestream_params['mpts'])
+    evaluation.eval_ari()
 
 if __name__ == "__main__":
     main()

@@ -19,8 +19,6 @@ def get_model_versions(checkpoint_path):
 def get_next_version(checkpoint_path):
     versions = get_model_versions(checkpoint_path)
 
-    print(versions)
-
     return int(versions[-1].split("_v")[-1].split(".pkl")[0]) + 1 if versions else 1
 
 def save_checkpoint(corestream_obj, index, version, checkpoint_path):

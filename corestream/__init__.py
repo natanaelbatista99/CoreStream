@@ -13,3 +13,4 @@ from .mutual_reachability_graph import MutualReachabilityGraph
 from .neighbour import Neighbour
 from .node import Node
 from .updating import Updating
+from .evaluation import Evaluation
