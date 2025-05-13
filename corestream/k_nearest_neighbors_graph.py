@@ -18,7 +18,6 @@ class KNearestNeighborsGraph(AbstractGraph):
         pass
 
     def buildAbsGraph(self, timestamp):
-        
         sns.set_context('poster')
         sns.set_style('white')
         sns.set_color_codes()

@@ -61,9 +61,10 @@ def set_stdout_stderr(result_dataset_path, dataset_name):
 def main():
 
     # Checking dataset file and experiement_config.json file
-    dataset_name, dataset = check_dataset()
-    all_configs           = check_parameters(dataset_name)
-    corestream_params     = all_configs[dataset_name]
+    dataset_name, dataset     = check_dataset()
+    all_configs               = check_parameters(dataset_name)
+    corestream_params         = all_configs[dataset_name]
+    corestream_params['mpts'] = list(eval(corestream_params['mpts']))
 
     # Verifica checkpoint
     result_dataset_path = os.path.join("results", corestream_params['dataset'])
@@ -72,10 +73,6 @@ def main():
 
     # Redirects stdout and stderr to files
     set_stdout_stderr(result_dataset_path, corestream_params['dataset'])
-
-    evaluation = Evaluation(corestream_params['dataset'], corestream_params['mpts'])
-    evaluation.evaluation_mensure()
-    sys.exit(1)
 
     corestream, start_index, version = load_checkpoint(checkpoint_path)
     
@@ -103,18 +100,10 @@ def main():
             if (count_points / corestream.n_samples_init) % 2 == 1:
                 save_checkpoint(corestream, count_points, version, checkpoint_path)
                 version += 1
-                
-
-        #if count_points == corestream.n_samples_init:
-        #    break
 
     corestream.save_runtime_final()
 
     print("Time Total: ", time.time() - start)
-
-    # ASSESSMENT
-    evaluation = Evaluation(corestream_params['dataset'], corestream_params['mpts'])
-    evaluation.eval_ari()
 
 if __name__ == "__main__":
     main()

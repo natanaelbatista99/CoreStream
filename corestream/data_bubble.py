@@ -27,11 +27,8 @@ class Vertex():
             return -1
         return self.m_coreDist
 
-    def setCoreDist(self, coreDistValue):
+    def setCoreDistance(self, coreDistValue):
         self.m_coreDist = coreDistValue
-
-    def setCoreDistance(self, coreDistObj):
-        self.m_coreDistanceObject = coreDistObj
 
     def String(self):
         return f"({self.m_db.getRep()})"

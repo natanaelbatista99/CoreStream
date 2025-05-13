@@ -1,8 +1,10 @@
 
 import time
+import math
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from sklearn.neighbors import KDTree
 from .abstract_graph import AbstractGraph
 from .data_bubble import Vertex, DataBubble
 from .k_nearest_neighbors_graph import KNearestNeighborsGraph
@@ -11,7 +13,7 @@ from .neighbour import Neighbour
 class MutualReachabilityGraph(AbstractGraph):
     def __init__(self, G, dbs : DataBubble, mpts, timestamp):
         super().__init__()
-        self.m_mpts  = mpts
+        self.mpts    = mpts
         self.G         = G
         self.timestamp = timestamp
 
@@ -19,21 +21,87 @@ class MutualReachabilityGraph(AbstractGraph):
             v = Vertex(db, timestamp)
             db.setVertexRepresentative(v)
             self.G.add_node(v)
-            
             self.addVertex(v)
 
         self.knng = KNearestNeighborsGraph(G)
         
         start = time.time()
-        self.computeCoreDistance(G, mpts)
+        self.computeCoreDistance()
         end   = time.time()
         print("> Time coreDistanceDB", end - start, end='\n')
 
     def getKnngGraph(self):
         return self.knng
+       
+    def buildGraph(self):
+        seen = set()
+
+        for idx1, v1 in enumerate(self.G.nodes):
+            for idx2, v2 in enumerate(self.G.nodes):
+                pair = (idx1, idx2)
+
+                if idx1 >= idx2 or pair in seen:
+                    continue
+                
+                seen.add(pair)
+                mrd = self.getMutualReachabilityDistance(v1, v2)
+                self.G.add_edge(v1, v2, weight = mrd)
+                self.addEdge(v1, v2, mrd)
+
+    def computeCoreDistance(self):
+        vertices_list = list(self.G.nodes)
+        coords        = [[v for k, v in vertex.getDataBubble().getRep(self.timestamp).items()] for vertex in vertices_list]
+        
+        kdtree = KDTree(coords)
+
+        # mpts: valor fixo para a distância do m-ésimo vizinho
+        _, indices = kdtree.query(coords, k = math.floor((self.mpts + 1) / 2))
+
+        # Atualiza os objetos Vertex no grafo com a core distance
+        for i, knn in enumerate(indices):
+            current      = vertices_list[i]
+            mpts_objects = 0.0
+            neighbour_c  = None
+
+            for j, k in enumerate(knn):
+                k_neighbour   = vertices_list[k]
+                weight        = k_neighbour.getDataBubble()._weight(self.timestamp)
+                mpts_objects += weight
+
+                if (current != k_neighbour) and self.knng.getEdge(current, k_neighbour) is None:
+                    self.knng.setEdge(current, k_neighbour)
+
+                if (current == k_neighbour) and (weight >= self.mpts):
+                    current.setCoreDistance(current.getDataBubble().getNnDist(self.mpts, self.timestamp))
+                    break
+                elif (mpts_objects >= self.mpts):
+                    mpts_objects -= weight
+                    neighbour_c   = k_neighbour
+                    break
+
+            if neighbour_c != None:
+                # EXTENT OF CURRENT AND NEIGHBOUR c
+                extent_current       = current.getDataBubble().getExtent(self.timestamp)
+                extent_neighbour_c   = neighbour_c.getDataBubble().getExtent(self.timestamp)
+                
+                overlapping          = current.getDistanceRep(neighbour_c) - (extent_current + extent_neighbour_c)
+                
+                knn_dist_neighbour_c = neighbour_c.getDataBubble().getNnDist(self.mpts - mpts_objects, self.timestamp)
+                
+                if(overlapping >= 0.0):
+                    current.setCoreDistance(current.getDistanceRep(neighbour_c) - extent_neighbour_c + knn_dist_neighbour_c)
+                else:
+                    overlapping *= -1
+                    
+                    if knn_dist_neighbour_c <= overlapping:
+                        current.setCoreDistance(extent_current)
+                    else:
+                        current.setCoreDistance(extent_current + knn_dist_neighbour_c - overlapping)
+
+    def getMutualReachabilityDistance(self, v1, v2):
+        return max(v1.getCoreDistance(), max(v2.getCoreDistance(), v1.getDistance(v2)))
     
     def buildAbsGraph(self):
-        
         sns.set_context('poster')
         sns.set_style('white')
         sns.set_color_codes()
@@ -68,65 +136,3 @@ class MutualReachabilityGraph(AbstractGraph):
         # Mostre o gráfico
         plt.scatter(data[0:5000, 0], data[0:5000, 1], **plot_kwds)
         plt.show()
-       
-    def buildGraph(self):
-        for v1 in self.G:            
-            for v2 in self.G:
-                if v1 != v2:
-                    mrd = self.getMutualReachabilityDistance(v1, v2)
-                    self.G.add_edge(v1, v2, weight = mrd)
-                    self.addEdge(v1, v2, mrd)
-
-    def computeCoreDistance(self, vertices, mpts):
-        for current in vertices:
-            if current.getDataBubble()._weight(self.timestamp) >= mpts:
-                current.setCoreDist(current.getDataBubble().getNnDist(mpts, self.timestamp))
-            else:
-                neighbours  = self.getNeighbourhood(current, vertices)
-                countPoints = current.getDataBubble()._weight(self.timestamp)
-                neighbourC  = None
-
-                for n in neighbours:
-                    weight       = n.getVertex().getDataBubble()._weight(self.timestamp)
-                    countPoints += weight
-                    
-                    if self.knng.getEdge(current, n.getVertex()) is None:
-                        self.knng.setEdge(current, n.getVertex())
-                        
-                    if countPoints >= mpts:
-                        countPoints -= weight
-                        neighbourC   = n
-                        
-                        break
-                
-                extentCurrent    = current.getDataBubble().getExtent(self.timestamp)
-                extentNeighbourC = neighbourC.getVertex().getDataBubble().getExtent(self.timestamp)
-                
-                overlapping = current.getDistanceRep(neighbourC.getVertex()) - (extentCurrent + extentNeighbourC)
-                
-                knnDistNeighbourC = neighbourC.getVertex().getDataBubble().getNnDist(mpts - countPoints, self.timestamp)
-                
-                if(overlapping >= 0.0):
-                    current.setCoreDist(current.getDistanceRep(neighbourC.getVertex()) - extentNeighbourC + knnDistNeighbourC)
-                else:
-                    overlapping *= -1
-                    
-                    if knnDistNeighbourC <= overlapping:
-                        current.setCoreDist(current.getDataBubble().getExtent(self.timestamp))
-                    else:
-                        current.setCoreDist(current.getDataBubble().getExtent(self.timestamp) + knnDistNeighbourC - overlapping)
-                
-    def getNeighbourhood(self, vertex, vertices):
-        neighbours = []
-        
-        for v in vertices:
-            if v != vertex:
-                neighbour = Neighbour(v, vertex.getDistanceRep(v) - v.getDataBubble().getExtent(self.timestamp))
-                neighbours.append(neighbour)
-                
-        neighbours.sort(key=lambda x: x.getDistance(), reverse=False)
-        
-        return neighbours
-
-    def getMutualReachabilityDistance(self, v1, v2):
-        return max(v1.getCoreDistance(), max(v2.getCoreDistance(), v1.getDistance(v2)))
