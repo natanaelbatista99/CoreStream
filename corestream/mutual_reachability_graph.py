@@ -46,7 +46,8 @@ class MutualReachabilityGraph(AbstractGraph):
                 seen.add(pair)
                 mrd = self.getMutualReachabilityDistance(v1, v2)
                 self.G.add_edge(v1, v2, weight = mrd)
-                self.addEdge(v1, v2, mrd)
+        
+        del seen
 
     def computeCoreDistance(self):
         vertices_list = list(self.G.nodes)
