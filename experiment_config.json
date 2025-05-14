@@ -1,7 +1,7 @@
 {
     "28k2d.csv": {
         "dataset": "28k2d",
-        "mpts": "[10, 8, 6, 4]",
+        "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.035,
         "mu": 2,
