@@ -326,10 +326,13 @@ class CoreStream(base.Clusterer, nn.Module):
         print("Computing Multiple Hierarchies:")
         start_hierarchies = time.time()
         # PARALLELISM
-        args = [(csg, mptsi) for mptsi in self.mpts]
+        try: 
+            args = [(csg, mptsi) for mptsi in self.mpts]
 
-        with Pool(processes = (cpu_count() - 5)) as pool:
-            results = pool.starmap(self.compute_hierarchy_mpts, args)
+            with Pool(processes = (cpu_count() - 5)) as pool:
+                results = pool.starmap(self.compute_hierarchy_mpts, args)
+        except KeyboardInterrupt:
+            print("Interrompido pelo usuário")
 
         end_hierarchies = time.time()
         print("> Time for Multiple Hierarchies: ", end_hierarchies - start_hierarchies)
@@ -394,12 +397,6 @@ class CoreStream(base.Clusterer, nn.Module):
             print("> Time for MST: ", end_mst - start_mst)
 
             self.m_update = Updating(None, mst_csg, csg)
-            
-        # Dendrogram
-        start_dendrogram = time.time()
-        dendrogram       = Dendrogram(self.m_update.getMST(), mptsi, mptsi, self.timestamp) # MST, miClusterSize, mptsi
-        dendrogram.build()
-        end_dendrogram   = time.time()
         
         end_time_total = time.time()
         print("> Total Time MPts: ", end_time_total - start_time_total)
@@ -408,6 +405,13 @@ class CoreStream(base.Clusterer, nn.Module):
         
         # Time Selection Clusters
         if self.save_partitions:
+            # Dendrogram
+            start_dendrogram = time.time()
+            dendrogram       = Dendrogram(self.m_update.getMST(), mptsi, mptsi, self.timestamp) # MST, miClusterSize, mptsi
+            dendrogram.build()
+            end_dendrogram   = time.time()
+            print("> Total Time Dendrogram: ", end_dendrogram - start_dendrogram)
+
             start_selection = time.time()
             selection       = dendrogram.clusterSelection()
             partition       = [-1 for j in range(len_dbs + 10)]
@@ -422,7 +426,7 @@ class CoreStream(base.Clusterer, nn.Module):
 
                 for el in it:
                     partition_bubble[el.getDataBubble().getID()] = cont
-                    partition[el.getID()] = cont
+                    partition[el.getID()]                        = cont
 
                 cont += 1
 
@@ -436,14 +440,11 @@ class CoreStream(base.Clusterer, nn.Module):
             end_selection = time.time()
             
             self.save_partition(partition, csg.getVertices(), mptsi)
-            
-            if self.plot:
-                self.plot_partition(partition, mptsi, df_partition)
 
             # Partitions HDBSCAN
             start_hdbscan = time.time()
             
-            clusterer = hdbscan.HDBSCAN(min_cluster_size = 10, min_samples = mptsi, match_reference_implementation = True)
+            clusterer = hdbscan.HDBSCAN(min_cluster_size = 10, min_samples = mptsi, match_reference_implementation = True, core_dist_n_jobs = 1)
             clusterer.fit(df_partition.drop("id_db", axis=1))
             labels    = clusterer.labels_
         
@@ -456,8 +457,9 @@ class CoreStream(base.Clusterer, nn.Module):
 
             print(">Time for HDBSCAN: ", end_hdbscan - start_hdbscan)
 
-            # Plot HDBSCAN result
+            # PLOT
             if self.plot:
+                self.plot_partition(partition, mptsi, df_partition)
                 self.plot_hdbscan_result(mptsi, labels, df_partition)
 
             # SAVING OBJECTS PARTITIONS
@@ -548,48 +550,55 @@ class CoreStream(base.Clusterer, nn.Module):
         min_db = max_db = 0
         epsilon         = {}
         pos_point       = 0
+
+        if self.save_partition:
+            bubbles_to_points = []
         
         for i in range(len_buffer):
             
-            labels_visited[labels[i]] += 1
+            label     = labels[i]
+            object_new = dict(enumerate(self._init_buffer[i]))
+            labels_visited[label] += 1
             
-            if labels_visited[labels[i]] == 1:
+            if labels_visited[label] == 1:
                 db = DataBubble(
-                    x = dict(zip([j for j in range(len(self._init_buffer[i]))], self._init_buffer[i])),
+                    x = object_new,
                     timestamp = self.timestamp,
                     decaying_factor = self.decaying_factor,
                 )
 
-                db.setID(labels[i])
+                db.setID(label)
                 
-                self.p_data_bubbles.update({labels[i]: db})
+                self.p_data_bubbles.update({label: db})
                 
             else:
-                self.p_data_bubbles[labels[i]].insert(dict(zip([j for j in range(len(self._init_buffer[i]))], self._init_buffer[i])), self.timestamp)
+                self.p_data_bubbles[label].insert(object_new, self.timestamp)
 
-                if labels_visited[labels[i]] == self.mu:
+                if labels_visited[label] == self.mu:
                     count_potential += 1
-                if self.p_data_bubbles[labels[i]].getN() >= self.mu:
-                    epsilon[labels[i]] = self.p_data_bubbles[labels[i]].getExtent(self.timestamp)
+                if self.p_data_bubbles[label].getN() >= self.mu:
+                    epsilon[label] = self.p_data_bubbles[label].getExtent(self.timestamp)
                 
-            max_db = max(max_db, self.p_data_bubbles[labels[i]].getN())
+            max_db = max(max_db, self.p_data_bubbles[label].getN())
     
             if self.save_partitions:
-                self.df_bubbles_to_points.at[pos_point, '0']     = self._init_buffer[i][0]
-                self.df_bubbles_to_points.at[pos_point, '1']     = self._init_buffer[i][1]
-                self.df_bubbles_to_points.at[pos_point, 'id_db'] = labels[i]
+                bubbles_to_points.append([self._init_buffer[i][0], self._init_buffer[i][1], label])
                 pos_point += 1
+
+        if self.save_partitions:
+            self.df_bubbles_to_points = pd.DataFrame(bubbles_to_points, columns=['0', '1', 'id_db'])
         
         # outliers data_bubbles
         if count_potential != len(self.p_data_bubbles):
-            key   = 0
-            key_p = 0
-            key_o = 2
+            replace_map = {}
+            key         = 0
+            key_p       = 0
+            key_o       = 2
             
             while labels_visited[key]:
                 if labels_visited[key] < self.mu:
                     if self.save_partitions:
-                        self.df_bubbles_to_points['id_db'] = self.df_bubbles_to_points['id_db'].replace(key, (-1) * key_o)
+                        replace_map[key] = (-1) * key_o
                     
                     self.o_data_bubbles[key_o] = self.p_data_bubbles[key]
                     self.p_data_bubbles.pop(key)
@@ -607,11 +616,13 @@ class CoreStream(base.Clusterer, nn.Module):
                         
                         if self.save_partitions:
                             #update new key
-                            self.df_bubbles_to_points['id_db'] = self.df_bubbles_to_points['id_db'].replace(key, key_p)
+                            replace_map[key] = key_p
 
                     key_p += 1
-                
                 key += 1
+
+            if self.save_partitions:
+                self.df_bubbles_to_points['id_db'] = self.df_bubbles_to_points['id_db'].replace(replace_map)
                 
         end = time.time()
         
@@ -706,9 +717,9 @@ class CoreStream(base.Clusterer, nn.Module):
                 os.makedirs(sub_dir)
             
             # SAVE MPTS PARTITION
-            df_partition                  = pd.DataFrame([partition])
+            df_partition                   = pd.DataFrame([partition])
             df_partition['partition_mpts'] = mpts
-            df_partition.columns          = df_partition.columns.map(str)
+            df_partition.columns           = df_partition.columns.map(str)
             df_partition.to_parquet(os.path.join(sub_dir, f"partitions_mpts_{mpts}.parquet"), index=True)
 
             if self.plot:

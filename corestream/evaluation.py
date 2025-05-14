@@ -40,8 +40,8 @@ class Evaluation(nn.Module):
         colorbar.set_label(mensure['label'], fontsize=30)
 
         plt.title("Heatmap TIMESTAMP " + str(self.timestamp) + " | # Objects: " + str(objects) + " | Mean: " + str(round(df_heatmap.values.mean(), 4)) + " | std: " + str(round(df_heatmap.values.std(), 4)), fontsize=26)
-        plt.xticks(fontsize=20)  # Eixo X
-        plt.yticks(fontsize=20)  # Eixo Y
+        plt.xticks(fontsize=16)  # Eixo X
+        plt.yticks(fontsize=16)  # Eixo Y
         plt.xlabel("HDBSCAN* Partition", fontsize=26)
         plt.ylabel("CoreStream Partition", fontsize=26)
         plt.savefig(sub_dir + f"heatmap_{mensure['metric']}.png")
@@ -85,10 +85,8 @@ class Evaluation(nn.Module):
         ]
 
         # Executa em paralelo
-        with Pool(cpu_count() - 5) as pool:
+        with Pool(cpu_count() - 10) as pool:
             results = pool.map(self.compute_scores, args_list)
-
-        print(self.timestamp)
 
         # Preenche os resultados
         for i, j, mpt_i, ari, nmi in results:

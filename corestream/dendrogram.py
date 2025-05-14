@@ -9,7 +9,7 @@ from .minimal_spaning_tree import MinimalSpaningTree
 from .dendrogram_component import DendrogramComponent
 
 class Dendrogram:
-    def __init__(self, mst: MinimalSpaningTree, min_cluster_size: int, mpts: int,timestamp):        
+    def __init__(self, mst: MinimalSpaningTree, min_cluster_size: int, mpts: int, timestamp):        
         assert len(mst.getVertices()) > 0
         Node.resetStaticLabelCounter()
 
