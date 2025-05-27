@@ -265,16 +265,18 @@ class Dendrogram:
         return selection
     
     def getLeavesDfs(self, node):
-        res = []
-        
-        if len(node.getChildrenMinClusterSize(self.m_minClusterSize)) == 0:
-            res.append(node)
-            return res
+        stack  = [node]
+        leaves = []
 
-        for n in node.getChildrenMinClusterSize(self.m_minClusterSize):
-            res.extend(self.getLeavesDfs(n))
+        while stack:
+            current  = stack.pop()
+            children = current.getChildrenMinClusterSize(self.m_minClusterSize)
+            if not children:
+                leaves.append(current)
+            else:
+                stack.extend(children)
 
-        return res      
+        return leaves
         
     def condensedTreePlot(self, selection, select_clusters = True, selection_palette = None, label_clusters = False):
         

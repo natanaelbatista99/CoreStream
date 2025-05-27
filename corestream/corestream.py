@@ -149,8 +149,7 @@ class CoreStream(base.Clusterer, nn.Module):
         pos = self._n_samples_seen - 1
         
         if self.save_partitions:
-            self.df_bubbles_to_points.loc[pos, '0']     = point[0]
-            self.df_bubbles_to_points.loc[pos, '1']     = point[1]
+            self.df_bubbles_to_points.loc[pos] = point
             self.df_bubbles_to_points.loc[pos, 'id_db'] = 0
 
         if len(self.p_data_bubbles) != 0:
@@ -328,6 +327,8 @@ class CoreStream(base.Clusterer, nn.Module):
         # PARALLELISM
         try: 
             args = [(csg, mptsi) for mptsi in self.mpts]
+
+            print('CPU: ', cpu_count())
 
             with Pool(processes = (cpu_count() - 5)) as pool:
                 results = pool.starmap(self.compute_hierarchy_mpts, args)
@@ -549,7 +550,6 @@ class CoreStream(base.Clusterer, nn.Module):
         count_potential = 0
         min_db = max_db = 0
         epsilon         = {}
-        pos_point       = 0
 
         if self.save_partition:
             bubbles_to_points = []
@@ -582,12 +582,11 @@ class CoreStream(base.Clusterer, nn.Module):
             max_db = max(max_db, self.p_data_bubbles[label].getN())
     
             if self.save_partitions:
-                bubbles_to_points.append([self._init_buffer[i][0], self._init_buffer[i][1], label])
-                pos_point += 1
+                bubbles_to_points.append([x for x in self._init_buffer[i]] + [label])
 
         if self.save_partitions:
-            self.df_bubbles_to_points = pd.DataFrame(bubbles_to_points, columns=['0', '1', 'id_db'])
-        
+            self.df_bubbles_to_points = pd.DataFrame(bubbles_to_points, columns=[x for x in range(len(self._init_buffer[i]))] + ['id_db'])
+                    
         # outliers data_bubbles
         if count_potential != len(self.p_data_bubbles):
             replace_map = {}
@@ -781,7 +780,7 @@ class CoreStream(base.Clusterer, nn.Module):
                 plt.gca().add_patch(plt.Circle((partition['x'].loc[j], partition['y'].loc[j]), partition['radio'].loc[j], color=partition['color'].loc[j], fill=False))
                 #plt.text(partition['x'].loc[j], partition['y'].loc[j], str(partition['ID'].loc[j]), fontsize=10, ha='center', va='center')
 
-            plt.scatter(df_partition['0'], df_partition['1'], **plot_kwds, label=legend)
+            plt.scatter(df_partition[0], df_partition[1], **plot_kwds, label=legend)
             plt.legend(bbox_to_anchor=(-0.1, 1.02, 1, 0.2), loc="lower left", borderaxespad=0, fontsize=28)
             plt.savefig(str(sub_dir) + "/mpts_" + str(mpts) + ".png")
             plt.close('all')
@@ -810,7 +809,7 @@ class CoreStream(base.Clusterer, nn.Module):
         title += "Len Objects: " + str(len(labels))
 
         plt.title(title)
-        plt.scatter(df_partition['0'], df_partition['1'], c=labels, cmap='magma', **plot_kwds)
+        plt.scatter(df_partition[0], df_partition[1], c=labels, cmap='magma', **plot_kwds)
         plt.savefig(str(self.base_dir_result) + "plots/plot_bubbles_t" + str(self.timestamp) + "/mpts _" + str(mpts) + "_hdbscan.png")
         plt.close('all')
     
