@@ -330,7 +330,7 @@ class CoreStream(base.Clusterer, nn.Module):
 
             print('CPU: ', cpu_count())
 
-            with Pool(processes = (cpu_count() - 5)) as pool:
+            with Pool(processes = (10)) as pool:
                 results = pool.starmap(self.compute_hierarchy_mpts, args)
         except KeyboardInterrupt:
             print("Interrompido pelo usuário")
