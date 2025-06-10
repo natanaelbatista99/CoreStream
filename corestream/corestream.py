@@ -279,7 +279,7 @@ class CoreStream(base.Clusterer, nn.Module):
         
         # (self.mpts / self.mu) is the wort case, when all data bubbles have the slef.mu points
         if len(self.p_data_bubbles) < (max(self.mpts) / self.mu):
-            print("no building possible since num_potential_dbs < Mpts")
+            print("no building possible since num_potential_dbs < Mpts / MU")
             return
         
         Vertex.s_idCounter = 0
@@ -330,7 +330,7 @@ class CoreStream(base.Clusterer, nn.Module):
 
             print('CPU: ', cpu_count())
 
-            with Pool(processes = (10)) as pool:
+            with Pool(processes = (3)) as pool:
                 results = pool.starmap(self.compute_hierarchy_mpts, args)
         except KeyboardInterrupt:
             print("Interrompido pelo usuário")

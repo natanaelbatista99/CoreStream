@@ -85,7 +85,7 @@ class Evaluation(nn.Module):
         ]
 
         # Executa em paralelo
-        with Pool(cpu_count() - 10) as pool:
+        with Pool(cpu_count() - 20) as pool:
             results = pool.map(self.compute_scores, args_list)
 
         # Preenche os resultados
