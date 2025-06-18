@@ -328,9 +328,9 @@ class CoreStream(base.Clusterer, nn.Module):
         try: 
             args = [(csg, mptsi) for mptsi in self.mpts]
 
-            print('CPU: ', cpu_count())
+            #print('CPU: ', cpu_count())
 
-            with Pool(processes = (3)) as pool:
+            with Pool(processes = (2)) as pool:
                 results = pool.starmap(self.compute_hierarchy_mpts, args)
         except KeyboardInterrupt:
             print("Interrompido pelo usuário")
@@ -338,8 +338,7 @@ class CoreStream(base.Clusterer, nn.Module):
         end_hierarchies = time.time()
         print("> Time for Multiple Hierarchies: ", end_hierarchies - start_hierarchies)
 
-        if self.save_partition:
-            # ASSESSMENT
+        if self.save_partitions:
             evaluation = Evaluation(self.dataset, self.mpts, self.timestamp)
             evaluation.evaluation_mensure()
 
@@ -402,7 +401,7 @@ class CoreStream(base.Clusterer, nn.Module):
         end_time_total = time.time()
         print("> Total Time MPts: ", end_time_total - start_time_total)
         
-        start_selection = end_selection = 0
+        start_selection = end_selection = start_dendrogram = end_dendrogram = 0
         
         # Time Selection Clusters
         if self.save_partitions:
@@ -861,7 +860,7 @@ class CoreStream(base.Clusterer, nn.Module):
             if not os.path.exists(m_directory):
                 os.makedirs(m_directory)
 
-            with open(os.path.join(m_directory, "runtime_final_t" + str(self.timestamp) + ".csv"), 'w') as writer:
+            with open(os.path.join(m_directory, "runtime_final.csv"), 'w') as writer:
                 writer.write("timestamp,data_bubbles,summarization,mrg,mst,core_sg,multiple_hierarchies\n")
 
                 for _, linha in self.df_runtime_final.iterrows():
