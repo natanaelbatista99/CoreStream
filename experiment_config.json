@@ -1,6 +1,7 @@
 {
     "28k2d.csv": {
         "dataset": "28k2d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.035,
@@ -16,6 +17,7 @@
     },
     "40k2d.csv": {
         "dataset": "40k2d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.02,
@@ -31,6 +33,7 @@
     },
     "100k_2d_15c.csv": {
         "dataset": "100k_2d_15c",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.012,
@@ -46,6 +49,7 @@
     },
     "kddcup.csv": {
         "dataset": "kddcup",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.0025,
@@ -61,6 +65,7 @@
     },
     "covertype.csv": {
         "dataset": "covertype",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.01,
@@ -76,6 +81,7 @@
     }    ,
     "poker_hand.csv": {
         "dataset": "poker_hand",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.0025,
@@ -91,6 +97,7 @@
     },
     "kddcup_1m.csv": {
         "dataset": "kddcup_1m",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.007,
@@ -106,6 +113,7 @@
     },
     "creditcard.csv": {
         "dataset": "creditcard",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.002,
@@ -121,6 +129,7 @@
     },
     "superconductivty.csv": {
         "dataset": "superconductivty",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.001,
@@ -136,6 +145,7 @@
     },
     "gas_turbine.csv": {
         "dataset": "gas_turbine",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.003,
@@ -151,6 +161,7 @@
     },
     "aids_virus.csv": {
         "dataset": "aids_virus",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.001,
@@ -166,6 +177,7 @@
     },
     "covid19.csv": {
         "dataset": "covid19",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.004,
@@ -181,11 +193,12 @@
     },
     "sensor_stream.csv": {
         "dataset": "sensor_stream",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.002,
+        "decaying_factor": 0.004,
         "mu": 2,
-        "n_samples_init": 40000,
+        "n_samples_init": 30000,
         "epsilon": 0.005,
         "percent": 0.10,
         "method_summarization": "single",
@@ -196,6 +209,7 @@
     },
     "census.csv": {
         "dataset": "census",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 201, 2)]",
         "min_cluster_size": 10,
         "decaying_factor": 0.0025,
@@ -211,9 +225,10 @@
     },
     "40k_4d.csv": {
         "dataset": "40k_4d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 101, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.015,
+        "decaying_factor": 0.03,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
@@ -226,9 +241,26 @@
     },
     "55k_4d.csv": {
         "dataset": "55k_4d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 101, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.015,
+        "decaying_factor": 0.03,
+        "mu": 2,
+        "n_samples_init": 10000,
+        "epsilon": 0.005,
+        "percent": 0.10,
+        "method_summarization": "single",
+        "stream_speed": 100,
+        "runtime": true,
+        "plot": false,
+        "save_partitions": false
+    },
+    "70k_2d.csv": {
+        "dataset": "70k_2d",
+        "beta": 0.75,
+        "mpts": "[x for x in range(2, 101, 2)]",
+        "min_cluster_size": 10,
+        "decaying_factor": 0.037,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
@@ -241,9 +273,10 @@
     },
     "70k_4d.csv": {
         "dataset": "70k_4d",
-        "mpts": "[x for x in range(2, 201, 2)]",
+        "beta": 0.75,
+        "mpts": "[x for x in range(2, 151, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.016,
+        "decaying_factor": 0.03,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
@@ -256,9 +289,10 @@
     },
     "70k_6d.csv": {
         "dataset": "70k_6d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 101, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.008,
+        "decaying_factor": 0.014,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
@@ -271,9 +305,10 @@
     },
     "70k_8d.csv": {
         "dataset": "70k_8d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 101, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.0025,
+        "decaying_factor": 0.006,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
@@ -286,9 +321,10 @@
     },
     "85k_4d.csv": {
         "dataset": "85k_4d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 101, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.015,
+        "decaying_factor": 0.024,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
@@ -301,9 +337,10 @@
     },
     "100k_4d.csv": {
         "dataset": "100k_4d",
+        "beta": 0.75,
         "mpts": "[x for x in range(2, 101, 2)]",
         "min_cluster_size": 10,
-        "decaying_factor": 0.015,
+        "decaying_factor": 0.025,
         "mu": 2,
         "n_samples_init": 10000,
         "epsilon": 0.005,
