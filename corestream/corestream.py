@@ -14,7 +14,9 @@ import sys
 
 from river import base
 from collections import defaultdict, deque
+from sklearn.neighbors import KDTree
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import MiniBatchKMeans
 from .data_bubble import Vertex, DataBubble
 from .coressg import CoreSSG
 from .updating import Updating
@@ -26,12 +28,6 @@ from .mutual_reachability_graph import MutualReachabilityGraph
 from multiprocessing import Pool, cpu_count
 
 class CoreStream(base.Clusterer, nn.Module):
-
-    class BufferItem:
-        def __init__(self, x, timestamp, covered):
-            self.x = x
-            self.timestamp = (timestamp,)
-            self.covered   = covered
     
     def __init__(
         self,
@@ -84,10 +80,7 @@ class CoreStream(base.Clusterer, nn.Module):
         self._time_period = math.ceil((1 / self.decaying_factor) * math.log((self.mu * self.beta) / (self.mu * self.beta - 1))) + 1
         print("Time period: ", self._time_period)
         
-        if self.method_summarization == 'epsilon':
-            self._init_buffer: typing.Deque[typing.Dict] = deque()
-        else:
-            self._init_buffer = []
+        self._init_buffer = []
         
         # DataFrame to save the runtimes
         if self.runtime:
@@ -95,11 +88,7 @@ class CoreStream(base.Clusterer, nn.Module):
 
         if self.save_partitions:
             # DataFrame to save summarized objects from Data Bubbles
-            self.df_bubbles_to_points = pd.DataFrame({
-                "0": pd.Series(dtype="float"),
-                "1": pd.Series(dtype="float"),
-                "id_db": pd.Series(dtype="Int64")
-            })
+            self.df_bubbles_to_points = None
         
         # check that the value of beta is within the range (0,1]
         if not (0 < self.beta <= 1):
@@ -149,7 +138,7 @@ class CoreStream(base.Clusterer, nn.Module):
         pos = self._n_samples_seen - 1
         
         if self.save_partitions:
-            self.df_bubbles_to_points.loc[pos] = point
+            self.df_bubbles_to_points.loc[pos]          = point
             self.df_bubbles_to_points.loc[pos, 'id_db'] = 0
 
         if len(self.p_data_bubbles) != 0:
@@ -278,9 +267,9 @@ class CoreStream(base.Clusterer, nn.Module):
         print("> count_outlier: ", len(self.o_data_bubbles))
         
         # (self.mpts / self.mu) is the wort case, when all data bubbles have the slef.mu points
-        if len(self.p_data_bubbles) < (max(self.mpts) / self.mu):
-            print("no building possible since num_potential_dbs < Mpts / MU")
-            return
+        #if len(self.p_data_bubbles) < (max(self.mpts) / self.mu):
+        #    print("no building possible since num_potential_dbs < Mpts / MU")
+        #    return
         
         Vertex.s_idCounter = 0
         
@@ -292,7 +281,10 @@ class CoreStream(base.Clusterer, nn.Module):
         
         # MRG --
         start_mrg = time.time()
-        mrg       = MutualReachabilityGraph(G, self.p_data_bubbles.values(), max(self.mpts), self.timestamp)
+        if len(self.p_data_bubbles) <= max(self.mpts):
+            mrg = MutualReachabilityGraph(G, self.p_data_bubbles.values(), len(self.p_data_bubbles), self.timestamp)
+        else:
+            mrg = MutualReachabilityGraph(G, self.p_data_bubbles.values(), max(self.mpts), self.timestamp)
         mrg.buildGraph()
         end_mrg   = time.time()
         
@@ -325,12 +317,15 @@ class CoreStream(base.Clusterer, nn.Module):
         print("Computing Multiple Hierarchies:")
         start_hierarchies = time.time()
         # PARALLELISM
-        try: 
-            args = [(csg, mptsi) for mptsi in self.mpts]
+        try:
+            if len(self.p_data_bubbles) <= max(self.mpts):
+                args = [(csg, mptsi) for mptsi in range(2, len(self.p_data_bubbles), 2)]
+            else:
+                args = [(csg, mptsi) for mptsi in self.mpts]
 
             #print('CPU: ', cpu_count())
 
-            with Pool(processes = (2)) as pool:
+            with Pool(processes = (10)) as pool:
                 results = pool.starmap(self.compute_hierarchy_mpts, args)
         except KeyboardInterrupt:
             print("Interrompido pelo usuário")
@@ -339,7 +334,10 @@ class CoreStream(base.Clusterer, nn.Module):
         print("> Time for Multiple Hierarchies: ", end_hierarchies - start_hierarchies)
 
         if self.save_partitions:
-            evaluation = Evaluation(self.dataset, self.mpts, self.timestamp)
+            if len(self.p_data_bubbles) <= max(self.mpts):
+                evaluation = Evaluation(self.dataset, [mptsi for mptsi in range(2, len(self.p_data_bubbles), 2)], self.timestamp)
+            else:
+                evaluation = Evaluation(self.dataset, self.mpts, self.timestamp)
             evaluation.evaluation_mensure()
 
         if self.runtime:
@@ -488,51 +486,111 @@ class CoreStream(base.Clusterer, nn.Module):
         # Plot MST            -> mst_csg.buildAbsGraph(self.timestamp)
         # GraphViz Dendrogram -> if i == 200: dendrogram.getGraphVizString()
     
-    def _expand_cluster(self, db, neighborhood):
+    def _expand_cluster(self, db, neighborhood, visited):
         for idx in neighborhood:
             item = self._init_buffer[idx]
             
-            if not item.covered:
-                item.covered = True
-                db.insert(item.x, self.timestamp)
+            if not visited[idx]:
+                visited[idx] = 1
+                db.insert({key: value for key, value in enumerate(item)}, self.timestamp)
 
-    def _get_neighborhood_ids(self, item):
-        neighborhood_ids = deque()
+    def _get_neighborhood_ids(self, current, knn, visited):
+        neighborhood_ids = []
         
-        for idx, other in enumerate(self._init_buffer):
-            if not other.covered:
-                #print(">> ", self._distance(item.x, other.x))
-                if self._distance(item.x, other.x) < self.epsilon:
-                    neighborhood_ids.append(idx)
+        for k in knn:
+            k_neighbour = self._init_buffer[k]
+
+            if not visited[k] and (self._distance(current, k_neighbour) <= self.epsilon):
+                neighborhood_ids.append(k)
+            else:
+                break
         
         return neighborhood_ids
     
     def _initial_epsilon(self):
         start = time.time()
         
-        for item in self._init_buffer:
-            if not item.covered:
-                item.covered = True
-                neighborhood = self._get_neighborhood_ids(item)
-                
+        kdtree = KDTree(self._init_buffer)
+
+        # mpts: valor fixo para a distância do m-ésimo vizinho
+        _, indices = kdtree.query(self._init_buffer, k = math.floor((max(self.mpts) + 1) / 2))
+
+        visited = np.zeros(len(self._init_buffer))
+        label   = 0
+
+        if self.save_partition:
+            bubbles_to_points = [[] for x in range(len(self._init_buffer))]
+        
+        for i, knn in enumerate(indices):
+            current = self._init_buffer[i]
+
+            if not visited[i]:
+                neighborhood = self._get_neighborhood_ids(current, knn, visited)
+
                 if len(neighborhood) > self.mu:
+                    visited[i] = 1
+
                     db = DataBubble(
-                        x=item.x,
-                        timestamp=self.timestamp,
-                        decaying_factor=self.decaying_factor,
+                        x = {key: value for key, value in enumerate(current)},
+                        timestamp = self.timestamp,
+                        decaying_factor = self.decaying_factor,
                     )
-                    self._expand_cluster(db, neighborhood)
+
+                    self._expand_cluster(db, neighborhood, visited)
                     db.setStaticCenter(self.timestamp)
-                    self.p_data_bubbles.update({len(self.p_data_bubbles): db})
-                else:
-                    item.covered = False
-                    
+
+                    self.p_data_bubbles.update({label: db})
+
+                    if self.save_partitions:
+                        bubbles_to_points[i] = [x for x in current] + [label]
+
+                        for idx in neighborhood:
+                            neighbour = self._init_buffer[idx]
+                            bubbles_to_points[i] = [x for x in neighbour] + [label]
+
+                    label += 1                    
+      
+        key_o = 2
+        # Outliers
+        for i, knn in enumerate(indices):
+            current = self._init_buffer[i]
+
+            if not visited[i]:
+                visited[i]   = 1
+                neighborhood = self._get_neighborhood_ids(current, knn, visited)
+                
+                db = DataBubble(
+                    x = {key: value for key, value in enumerate(current)},
+                    timestamp = self.timestamp,
+                    decaying_factor = self.decaying_factor,
+                )
+
+                if self.save_partitions:
+                    bubbles_to_points[i] = [x for x in current] + [(-1) * key_o]
+
+                    for idx in neighborhood:
+                        neighbour            = self._init_buffer[idx]
+                        bubbles_to_points[i] = [x for x in neighbour] + [(-1) * key_o]
+                
+                self._expand_cluster(db, neighborhood, visited)
+                db.setStaticCenter(self.timestamp)
+                
+                self.o_data_bubbles.update({key_o: db})
+
+                key_o += 1
+
         end = time.time()
+
+        if self.save_partitions:            
+            self.df_bubbles_to_points = pd.DataFrame(bubbles_to_points, columns=[x for x in range(len(self._init_buffer[i]))] + ['id_db'])
+
+        del indices
+
+        print("> Total: ", len(self.p_data_bubbles))
+        print("> Time for DBs: ", end - start)
         
         if self.runtime:
             self.df_runtime_final.at[self.timestamp, 'summarization'] = end - start
-        
-        print("> Time for Summarization: ", end - start)
     
     def _initial_single_linkage(self):
         start = time.time()
@@ -540,7 +598,10 @@ class CoreStream(base.Clusterer, nn.Module):
         self._init_buffer = np.array(self._init_buffer)
         
         # The linkage="single" does a clustering, e. g., the clusters are indentified and form big data bubbles.
-        clustering = AgglomerativeClustering(n_clusters = int(self.n_samples_init * self.percent), linkage='average')
+        #clustering = AgglomerativeClustering(n_clusters = int(self.n_samples_init * self.percent), linkage='average')
+        #clustering.fit(self._init_buffer)
+
+        clustering = MiniBatchKMeans(n_clusters=int(self.n_samples_init * self.percent), batch_size=10000, random_state=42)
         clustering.fit(self._init_buffer)
         
         labels          = clustering.labels_
@@ -554,8 +615,7 @@ class CoreStream(base.Clusterer, nn.Module):
             bubbles_to_points = []
         
         for i in range(len_buffer):
-            
-            label     = labels[i]
+            label      = labels[i]
             object_new = dict(enumerate(self._init_buffer[i]))
             labels_visited[label] += 1
             
@@ -668,10 +728,7 @@ class CoreStream(base.Clusterer, nn.Module):
 
         # Initialization
         if not self.initialized:
-            if self.method_summarization == 'epsilon':
-                self._init_buffer.append(self.BufferItem(x, self.timestamp, False))
-            else:
-                self._init_buffer.append(list(x.values()))
+            self._init_buffer.append(list(x.values()))
             
             
             if len(self._init_buffer) == self.n_samples_init:

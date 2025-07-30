@@ -24,7 +24,7 @@ print(len(labels))
 
 # ENCODER
 # attack
-kddcup_data['attack_state'] = LabelEncoder().fit_transform(kddcup_data["attack"])
+kddcup_data['attack_state']  = LabelEncoder().fit_transform(kddcup_data["attack"])
 # protocol_type
 kddcup_data['protocol_type'] = LabelEncoder().fit_transform(kddcup_data["protocol_type"])
 kddcup_data['service']       = LabelEncoder().fit_transform(kddcup_data["service"])
